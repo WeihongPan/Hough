@@ -1,0 +1,9 @@
+%攻击图像以检测算法鲁棒性
+
+%噪声
+J = imnoise(I,type);
+%type 包括 'gaussian'  'localvar'  'poisson'  'salt&pepper' 'speckle'
+
+%高斯模糊
+W = fspecial('gaussian',[5,5],3);
+I = imfilter(I, W);

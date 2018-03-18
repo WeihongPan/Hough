@@ -1,0 +1,111 @@
+function [ hough_space, hough_circles, para ] = hough_circle( BW, step_r, step_angle,min_r, max_r, thresh )
+
+% %%%%%%%%%%%%%%input%%%%%%%%%%%%%
+% BW：二值图像
+% step_r：半径步长
+% step_angle:角度步长（rad）
+% min_r:最小半径(自行估计）
+% max_r:最大半径（自行估计）
+% thresh:阈值。确定检索半径范围
+% %%%%%%%%%%%%%output%%%%%%%%%%%%%
+% hough_space:参数空间累加器，h(a,b,r)表示圆心在(a,b)半径为r的圆上的点的个数
+% hough_circles:二值图像，检测到的圆
+% para:参数空间，para(a,b,r)表示检测到的圆的圆心和半径
+
+circleParaXYR=[];%圆心半径数组
+para=[];
+
+[m,n] = size(BW);                                                                   %获取二值图像像素
+size_r = round( (max_r - min_r) / step_r)+1;                                        %计算半径步长并四舍五入
+size_angle = round(2*pi / step_angle);                                              %计算角度步长并四舍五入
+
+hough_space = zeros(m, n, size_r);                                                  %定义hough_space，并初始化为0
+%hough_space = fault(m,n,size_r)
+
+[rows, cols] = find(BW);                                                            %寻找二值图像中像素为1的像素点
+ecount = size(rows);                                                                %计算像素点个数
+
+% hough 变换
+% 将图像空间（x,y)对应到参数空间(a,b,r)
+
+%圆的参数方程
+% a = x - r*cos(angle)
+% b = y - r*sin(angle)
+for i = 1:ecount
+    for r = 1:size_r
+        for theta = 1:size_angle                                                    %theta*step_angle:半径绕圆心(a,b)的旋转角
+            a = round( rows(i) - (min_r + (r-1)*step_r)*cos(theta*step_angle) );    %四舍五入
+            b = round (cols(i) - (min_r + (r-1)*step_r)*sin(theta*step_angle) );    %四舍五入
+            if(a>0 && a<=m && b>0 && b<=n)                                          %若圆心在图像内
+                hough_space(a, b, r) = hough_space(a, b, r) + 1;                    %相应的累加器增加1
+            end
+        end    
+    end
+end
+
+% 检索超过阈值的像素点
+% 先找出累加器中的最大值，乘以theta作为阈值，即所找的hough_space的值应在(max_para*theta,max_para)之间。
+% 将满足条件的hough_space数组元素放入一个新的数组
+max_para = max(max(max(hough_space)));                                              %返回矩阵最大值（三维所以三重max）
+index = find(hough_space>=max_para*thresh);                                         %检索超过阈值的hough_space元素，并为其建立索引
+length = size(index);                                                               %统计个数（数组下标）
+hough_circles = false(m,n);
+
+% 将参数空间（a,b,r）对应回图像空间(x,y)
+% (x - a)^2 + (y - b)^2 = R^2
+% R >= min_r && R <= max_r
+for i = 1:ecount
+    for k = 1:length
+        par3 = floor(index(k)/(m*n))+1;                                             %半径步长
+             % 解释：之前我们定义了一个三维空间hough_space：hough_space = zeros(m, n， size_r);（LINE 22）。
+             % 而index是将hough_space一维化，即下标由(a,b,r)转变为a*b*r。因此，当我们知道index的值后，要想求第三维r，
+             % 就要将前两维都除掉，并向下取整（可以画一个长方体辅助理解，r即为长方体的高）。又因为我们的r（半径步长）
+             % 设定为从1开始变化，因此要在取整后再加上基数1。由此我们计算出当前点的半径步长。
+        par2 = floor((index(k) - (par3-1)*(m*n))/m)+1;%(x,y)空间中的圆心纵坐标
+             % 解释：与上同理，减去第三维后再除掉另外一维，同样要加1
+        par1 = index(k)-(par3-1)*(m*n)-(par2-1)*m;%(x,y)空间中的圆心横坐标
+             % 解释：前两维都减掉以后，剩下的就是第三维的值
+        if((rows(i)-par1)^2+(cols(i)-par2)^2<(min_r+(par3-1)*step_r)^2+5 && (rows(i)-par1)^2+(cols(i)-par2)^2>(min_r+(par3-1)*step_r)^2-5)%左右浮动±5
+            hough_circle(rows(i),cols(i)) = true;                                   %对满足要求的点进行标注，这些点就是满足条件的圆周上及圆周内的点
+        end
+    end
+end
+
+for k=1:length  
+    par3 = floor(index(k)/(m*n))+1;
+    par2 = floor((index(k)-(par3-1)*(m*n))/m)+1;  
+    par1 = index(k)-(par3-1)*(m*n)-(par2-1)*m;  
+    circleParaXYR = [circleParaXYR;par1,par2,par3];                                 %向数组circleParaXYR中添加新元素  
+    hough_circles(par1,par2)= true;                                                 %这时在不同圆的圆心处聚集了非常多的点
+end
+
+% 对集中在各个圆的圆心处的点取平均，得到针对每个圆的精确圆心和半径
+while size(circleParaXYR,1) >= 1  
+    num=1;                                                                          %统计该轮满足条件的圆心个数  
+    XYR=[];                                                                         %预存数组 
+    temp1 = circleParaXYR(1,1);  
+    temp2 = circleParaXYR(1,2);  
+    temp3 = circleParaXYR(1,3);  
+    c1=temp1;  
+    c2=temp2;  
+    c3=temp3;  
+    temp3= min_r+(temp3-1)*step_r;                                                  %取出数组中的第一个元素，并将temp3转化为相应的半径
+   if size(circleParaXYR,1)>1       
+     for k=2:size(circleParaXYR,1)  
+      if (circleParaXYR(k,1)-temp1)^2+(circleParaXYR(k,2)-temp2)^2 > temp3^2  
+            XYR=[XYR;circleParaXYR(k,1),circleParaXYR(k,2),circleParaXYR(k,3)];     %若当前点对应半径超过设定值，则将其存入XYR数组，留待下一轮循环
+      else
+          c1=c1+circleParaXYR(k,1);  
+          c2=c2+circleParaXYR(k,2);  
+          c3=c3+circleParaXYR(k,3);  
+          num=num+1;                                                                %若满足条件，则进行累加，为求平均做准备
+      end   
+    end  
+   end
+   c1=round(c1/num);  
+   c2=round(c2/num);  
+   c3=round(c3/num);                                                                %各个参数四舍五入求平均  
+   c3=min_r+(c3-1)*step_r;                                                          %转化成半径
+   para = [para;c1,c2,c3];                                                          %加入最终的para数组
+   circleParaXYR = XYR;                                                             %将剩余圆的参数资料传给circleParaXYR数组，进行下一轮循环
+end

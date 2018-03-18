@@ -61,13 +61,14 @@ for i = 1:ecount
         par1 = index(k)-(par3-1)*(m*n)-(par2-1)*m;                                  %(x,y)空间中的圆心横坐标
              
 % par3：之前我们定义了一个三维空间hough_space：hough_space = zeros(m, n, size_r);（LINE 22）。而index是将hough_space一维化，
-% 即下标由(a,b,r)转变为a*b*r。因此，当我们知道index的值后，要想求第三维r，就要将前两维都除掉，并向下取整（可以画一个长方体辅助理解，r即为长方体的高）。
+% 即下标由(a,b,r)转变为a*b*r。因此当我们知道index的值后，要想求第三维r，就要将前两维都除掉，并向下取整（可以画一个长方体辅助理解，r即为长方体的高)。
 % 又因为我们的r（半径步长）设定为从1开始变化，因此要在取整后再加上基数1。由此我们计算出当前点的半径步长。
 % par2：与上同理，减去第三维后再除掉另外一维，同样要加1
 % par1：前两维都减掉以后，剩下的就是第三维的值
         
-        if((rows(i)-par1)^2+(cols(i)-par2)^2<(min_r+(par3-1)*step_r)^2+5 && (rows(i)-par1)^2+(cols(i)-par2)^2>(min_r+(par3-1)*step_r)^2-5)%左右浮动±5
-            hough_circle(rows(i),cols(i)) = true;                                   %对满足要求的点进行标注，这些点就是满足条件的圆周上及圆周内的点
+        if((rows(i)-par1)^2+(cols(i)-par2)^2<(min_r+(par3-1)*step_r)^2+5&&(rows(i)-par1)^2+(cols(i)-par2)^2>(min_r+(par3-1)*step_r)^2-5)
+                                                                                    %左右浮动±5
+            hough_circle(rows(i),cols(i)) = true;                                   %对满足要求的点进行标注，这些点就是满足条件的圆环内的点
         end
     end
 end
@@ -94,7 +95,7 @@ while size(circleParaXYR,1) >= 1
    if size(circleParaXYR,1)>1       
      for k=2:size(circleParaXYR,1)  
       if (circleParaXYR(k,1)-temp1)^2+(circleParaXYR(k,2)-temp2)^2 > temp3^2  
-            XYR=[XYR;circleParaXYR(k,1),circleParaXYR(k,2),circleParaXYR(k,3)];     %若当前点对应半径超过设定值，则将其存入XYR数组，留待下一轮循环
+            XYR=[XYR;circleParaXYR(k,1),circleParaXYR(k,2),circleParaXYR(k,3)];     %若当前点对应半径超过设定值，则将其存入XYR数组，下轮循环
       else
           c1=c1+circleParaXYR(k,1);  
           c2=c2+circleParaXYR(k,2);  

@@ -57,14 +57,15 @@ hough_circles = false(m,n);
 for i = 1:ecount
     for k = 1:length
         par3 = floor(index(k)/(m*n))+1;                                             %半径步长
-             % 解释：之前我们定义了一个三维空间hough_space：hough_space = zeros(m, n， size_r);（LINE 22）。
-             % 而index是将hough_space一维化，即下标由(a,b,r)转变为a*b*r。因此，当我们知道index的值后，要想求第三维r，
-             % 就要将前两维都除掉，并向下取整（可以画一个长方体辅助理解，r即为长方体的高）。又因为我们的r（半径步长）
-             % 设定为从1开始变化，因此要在取整后再加上基数1。由此我们计算出当前点的半径步长。
-        par2 = floor((index(k) - (par3-1)*(m*n))/m)+1;%(x,y)空间中的圆心纵坐标
-             % 解释：与上同理，减去第三维后再除掉另外一维，同样要加1
-        par1 = index(k)-(par3-1)*(m*n)-(par2-1)*m;%(x,y)空间中的圆心横坐标
-             % 解释：前两维都减掉以后，剩下的就是第三维的值
+        par2 = floor((index(k) - (par3-1)*(m*n))/m)+1;                              %(x,y)空间中的圆心纵坐标
+        par1 = index(k)-(par3-1)*(m*n)-(par2-1)*m;                                  %(x,y)空间中的圆心横坐标
+             
+% par3：之前我们定义了一个三维空间hough_space：hough_space = zeros(m, n, size_r);（LINE 22）。而index是将hough_space一维化，
+% 即下标由(a,b,r)转变为a*b*r。因此，当我们知道index的值后，要想求第三维r，就要将前两维都除掉，并向下取整（可以画一个长方体辅助理解，r即为长方体的高）。
+% 又因为我们的r（半径步长）设定为从1开始变化，因此要在取整后再加上基数1。由此我们计算出当前点的半径步长。
+% par2：与上同理，减去第三维后再除掉另外一维，同样要加1
+% par1：前两维都减掉以后，剩下的就是第三维的值
+        
         if((rows(i)-par1)^2+(cols(i)-par2)^2<(min_r+(par3-1)*step_r)^2+5 && (rows(i)-par1)^2+(cols(i)-par2)^2>(min_r+(par3-1)*step_r)^2-5)%左右浮动±5
             hough_circle(rows(i),cols(i)) = true;                                   %对满足要求的点进行标注，这些点就是满足条件的圆周上及圆周内的点
         end

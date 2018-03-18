@@ -1,0 +1,35 @@
+circleParaXYR=[];                             %设置一个储存圆心和半径的数组
+A = imread('飞行器得到的图片(数字高程图).jpg'); %读入初始图像，注意要路径相同！
+I = imread('飞行器得到的图片(数字高程图).jpg');
+%图像预处理
+[m,n,l]=size(I);
+if l>1  
+    I = rgb2gray(I);                          %判断是否为灰度图，若非，则进行转化
+end  
+thresh = graythresh(I);
+I = im2bw(I, thresh);                         %由于Hough主要针对二值图，所以要对图像进行二值化
+BW = edge(I, 'sobel');                        %利用sobel算子处理图像，识别轮廓，以减少后续工作量
+%参数设置
+step_r = 1;                                   %半径步长
+step_angle = 0.1;                             %角度步长  
+minr = 1；                                    %最小半径
+maxr = 30;                                    %最大半径  
+thresh = 0.5;                                 %阈值
+
+[hough_space,hough_circles,para] = hough_circle(BW,step_r,step_angle,minr,maxr,thresh); %调用hough_circle函数  
+figure(1),imshow(A),title('原图')  
+figure(2),imshow(BW),title('边缘')  
+figure(3),imshow(hough_circles),title('检测结果')  
+  
+circleParaXYR=para;                           %将函数返回的paral数组赋给circleParaXYR
+
+%标出圆  
+figure(4),imshow(A),title('检测出图中的圆')  
+hold on;  
+  plot(circleParaXYR(:,2), circleParaXYR(:,1), 'r+');  
+  for k = 1 : size(circleParaXYR, 1)  
+    t=0:0.01*pi:2*pi;  
+    x=cos(t).*circleParaXYR(k,3)+circleParaXYR(k,2);
+    y=sin(t).*circleParaXYR(k,3)+circleParaXYR(k,1);  
+    plot(x,y,'r-');                          %利用参数方程绘制圆
+ end  

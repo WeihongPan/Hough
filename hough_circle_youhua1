@@ -1,0 +1,92 @@
+function [ para ] = hough_circle_2( BW,step_r,step_angle,r_min,r_max,p )
+
+% %%%%%%%%%%%%%%input%%%%%%%%%%%%%
+% BW：二值图像
+% step_r：半径步长
+% step_angle:角度步长（rad）
+% min_r:最小半径(自行估计）
+% max_r:最大半径（自行估计）
+% thresh:阈值。确定检索半径范围
+% %%%%%%%%%%%%%output%%%%%%%%%%%%%
+% para:参数空间，para(a,b,r)表示检测到的圆的圆心和半径
+
+circleParaXYR=[];  
+para=[];  
+ 
+size_r = round((r_max-r_min)/step_r)+1;                                      %四舍五入  
+size_angle = round(2*pi/step_angle);    
+
+[row,col] = size(BW);
+[rows,cols] = find(BW);                                                      %查找非零元素的行列坐标  
+ecount = size(rows);                                                         %非零坐标的个数  
+  
+% Hough变换  
+% 将图像空间(x,y)对应到参数空间(a,b,r)  
+  
+% a = x-r*cos(angle)  
+% b = y-r*sin(angle)  
+  
+i = 1:1:ecount;                                                               %创建一个以坐标为元素的一维矩阵
+theta = 1:step_angle:size_angle;                                              %创建一个以角度为元素的一维矩阵
+[I,T] = meshgrid(i,theta);%生成二维平面
+for r = 1:step_r:size_r
+    a = round(rows(I) - (r_min + (r - 1).*step_r).*cos(T.*step_angle));       %将针对一个元素的公式扩大到一个矩阵，进行矩阵运算
+    a = a(:);                                                                 %变换成n*1的列矩阵，便于下面的组合
+    b = round(cols(I) - (r_min + (r - 1).*step_r).*sin(T.*step_angle));
+    b = b(:); 
+    [m,~] = size(a);
+    E = [a,b,r*ones(m,1)];                                                    %将相应的a,b,r组合成n*3的矩阵
+  
+    a = (find(a>0 & a<=row))';                                                %找出a矩阵中符合要求的元素坐标
+    b = (find(b>0 & b<=col))';
+    e = intersect(a,b);                                                       %找出a，b的交集
+    C  = E(e,:);                                                              %满足条件的点的集合（有重复）
+
+    [F,~,n] = unique(C,'rows');                                               %F为无重复元素的矩阵
+    count = hist(n,unique(n));                                                %求每种情形的频数，此时为行矩阵
+    count = count';                                                           %此时为列矩阵
+    F = [F,count];                                                            %将各个元素与自身频数组合
+    circleParaXYR = [circleParaXYR;F];                                        %接到到一个大矩阵后面
+end
+
+max_para = max(circleParaXYR(:,4));                                           %找出第四列的最大值，即最大频数
+column = 4;
+num = max_para*p;                                                             %计算阈值
+row_index = find(circleParaXYR(:,column)>=num);                               %找到频数超过阈值的元素索引
+circleParaXYR = circleParaXYR(row_index,:);                                   %取出超过阈值的元素
+
+  
+%集中在各个圆的圆心处的点取平均，得到针对每个圆的精确圆心和半径！  
+while size(circleParaXYR,1) >= 1  
+    num=1;  
+    XYR=[];  
+    temp1=circleParaXYR(1,1);  
+    temp2=circleParaXYR(1,2);  
+    temp3=circleParaXYR(1,3);  
+    c1=temp1;  
+    c2=temp2;  
+    c3=temp3;  
+    temp3= r_min+(temp3-1)*step_r;  
+   if size(circleParaXYR,1)>1       
+     for k=2:size(circleParaXYR,1)  
+      if (circleParaXYR(k,1)-temp1)^2+(circleParaXYR(k,2)-temp2)^2 > temp3^2  
+         XYR=[XYR;circleParaXYR(k,1),circleParaXYR(k,2),circleParaXYR(k,3)];  %保存剩下圆的圆心和半径位置  
+      else    
+      c1=c1+circleParaXYR(k,1);  
+      c2=c2+circleParaXYR(k,2);  
+      c3=c3+circleParaXYR(k,3);  
+      num=num+1;  
+      end   
+    end  
+   end   
+      %fprintf(1,'sum %d %d radius %d\n',c1,c2,r_min+(c3-1)*step_r);  
+      c1=round(c1/num);  
+      c2=round(c2/num);  
+      c3=round(c3/num);  
+      c3=r_min+(c3-1)*step_r;  
+      %fprintf(1,'num=%d\n',num)  
+      %fprintf(1,'Center %d %d radius %d\n',c1,c2,c3);     
+      para=[para;c1,c2,c3];                                                   %保存各个圆的圆心和半径的值  
+      circleParaXYR=XYR;  
+end
+
